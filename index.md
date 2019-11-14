@@ -1,37 +1,78 @@
-## Welcome to GitHub Pages
+<!DOCTYPE html>
+<meta charset="utf-8">
+<body>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script>
 
-You can use the [editor on GitHub](https://github.com/jiyashaji/test.in/edit/master/index.md) to maintain and preview the content for your website in Markdown files.
+var width = 960,
+    height = 500;
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+var nodes = d3.range(200).map(function() { return {radius: Math.random() * 12 + 4}; }),
+    root = nodes[0],
+    color = d3.scale.category10();
 
-### Markdown
+root.radius = 0;
+root.fixed = true;
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+var force = d3.layout.force()
+    .gravity(0.05)
+    .charge(function(d, i) { return i ? 0 : -2000; })
+    .nodes(nodes)
+    .size([width, height]);
 
-```markdown
-Syntax highlighted code block
+force.start();
 
-# Header 1
-## Header 2
-### Header 3
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
 
-- Bulleted
-- List
+svg.selectAll("circle")
+    .data(nodes.slice(1))
+  .enter().append("circle")
+    .attr("r", function(d) { return d.radius; })
+    .style("fill", function(d, i) { return color(i % 3); });
 
-1. Numbered
-2. List
+force.on("tick", function(e) {
+  var q = d3.geom.quadtree(nodes),
+      i = 0,
+      n = nodes.length;
 
-**Bold** and _Italic_ and `Code` text
+  while (++i < n) q.visit(collide(nodes[i]));
 
-[Link](url) and ![Image](src)
-```
+  svg.selectAll("circle")
+      .attr("cx", function(d) { return d.x; })
+      .attr("cy", function(d) { return d.y; });
+});
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+svg.on("mousemove", function() {
+  var p1 = d3.mouse(this);
+  root.px = p1[0];
+  root.py = p1[1];
+  force.resume();
+});
 
-### Jekyll Themes
+function collide(node) {
+  var r = node.radius + 16,
+      nx1 = node.x - r,
+      nx2 = node.x + r,
+      ny1 = node.y - r,
+      ny2 = node.y + r;
+  return function(quad, x1, y1, x2, y2) {
+    if (quad.point && (quad.point !== node)) {
+      var x = node.x - quad.point.x,
+          y = node.y - quad.point.y,
+          l = Math.sqrt(x * x + y * y),
+          r = node.radius + quad.point.radius;
+      if (l < r) {
+        l = (l - r) / l * .5;
+        node.x -= x *= l;
+        node.y -= y *= l;
+        quad.point.x += x;
+        quad.point.y += y;
+      }
+    }
+    return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+  };
+}
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/jiyashaji/test.in/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+</script>
